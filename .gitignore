@@ -1,0 +1,74 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Environment variable files
+.env
+.env.*
+
+# Python egg files
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+*.manifest
+*.spec
+
+# PyInstaller
+*.log
+*.tmp
+*.bak
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Test output
+htmlcov/
+.coverage
+.tox/
+.nox/
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# mypy / pytype / pylint
+.mypy_cache/
+.pytype/
+pylint-report.txt
+pylint-global.txt
+
+# VS Code
+.vscode/
+
+# MacOS
+.DS_Store
+
+# IDEs and editors
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Files created by packaging
+*.tar.gz
+*.whl
+
+# Local settings
+settings_local.py

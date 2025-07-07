@@ -1,5 +1,0 @@
-[2025-07-06 14:26:57] Started general expert analysis for 5 experts
-[2025-07-06 14:27:38] Completed general expert analysis, saved to investment_research_outputs/general_experts/podcast_analysis_20250706_142729.txt, investment_research_outputs/general_experts/podcast_analysis_20250706_142729.md, investment_research_outputs/general_experts/podcast_analysis_20250706_142729.pdf
-[2025-07-06 14:27:38] Error in general expert analysis: name 'saved_path' is not defined
-[2025-07-06 14:28:03] Started podcast analysis for provided links
-[2025-07-06 14:28:42] Completed podcast analysis, saved to {'txt': PosixPath('investment_research_outputs/podcast_analysis/podcast_analysis_20250706_142830.txt'), 'md': PosixPath('investment_research_outputs/podcast_analysis/podcast_analysis_20250706_142830.md'), 'pdf': PosixPath('investment_research_outputs/podcast_analysis/podcast_analysis_20250706_142830.pdf')}

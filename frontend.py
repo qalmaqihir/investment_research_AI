@@ -11,7 +11,7 @@ import logging
 from agents.paywalled_agent import PaywalledContentAgent
 from agents.general_expert_agent import GeneralExpertAgent
 from agents.podcast_agent import PodcastAgent
-
+from utils.save_files_utils import save_document_all_formats
 # Configure logging for this module specifically
 def setup_logging(base_dir: Path):
     """Setup isolated logging for the main app"""
@@ -90,6 +90,7 @@ class InvestmentResearchAgents:
             (key for key in [deepseek_api_key, anthropic_api_key, gemini_api_key, openai_api_key] if key),
             None
         )
+        self.logger.info(f"Using {self.primary_api_key} as primary api key")
         
         if not self.primary_api_key:
             raise ValueError("At least one API key must be provided to initialize agents.")
@@ -102,7 +103,7 @@ class InvestmentResearchAgents:
             )
             self.general_expert_agent = GeneralExpertAgent(self.primary_api_key)
             self.podcast_agent = PodcastAgent(self.primary_api_key)
-            self.logger.info("All agents initialized successfully with primary API key")
+            self.logger.info("All agents initialized successfully with primary API key\n")
         except Exception as e:
             self.logger.error(f"Failed to initialize agents: {str(e)}")
             raise
@@ -123,11 +124,17 @@ class InvestmentResearchAgents:
             self.logger.error(f"X** [Main]>> Paywalled agent failed: {str(e)}. <<[Main]\n")
             raise
 
-    async def run_general_expert_agent(self, expert_names: List[str]):
+    # async def run_general_expert_agent(self, expert_names: List[str]):
+    async def run_general_expert_agent(self, expert_names: List[str], time_frame: str, focus_areas: List[str]):
         """Run general expert agent with error handling"""
         try:
             self.logger.info(f"[Main]>> Starting general expert agent with {len(expert_names)} experts. <<[Main]\n")
-            result = await self.general_expert_agent.run(expert_names)
+            # result = await self.general_expert_agent.run(expert_names)
+            result = await self.general_expert_agent.run(
+                    expert_names=expert_names,
+                    time_frame=time_frame,
+                    focus_areas=focus_areas
+                )
             self.logger.info(f"[Main]>> General expert agent completed successfully. <<[Main]\n")
             return result
         except Exception as e:
@@ -271,7 +278,7 @@ def main():
     # if st.session_state.agents is None:
     #     st.error("❌ Agents not initialized. Please check your API key.")
     #     return
-    
+
     # Sidebar configuration
     with st.sidebar:
         st.header("⚙️ Configuration")
@@ -438,15 +445,21 @@ def main():
                         
                         # Save result
                         filename = f"paywalled_{expert_tier}_analysis.txt"
-                        saved_path = save_document(
+                        # saved_path = save_document(
+                        #     result, 
+                        #     filename, 
+                        #     "paywalled_content", 
+                        #     st.session_state.base_dir
+                        # )
+                        
+                        saved_paths = save_document_all_formats(
                             result, 
                             filename, 
                             "paywalled_content", 
                             st.session_state.base_dir
                         )
-                        
-                        log_activity(f"Completed paywalled analysis, saved to {saved_path}", st.session_state.base_dir)
-                        st.success(f"✅ Analysis complete! Saved to: `{saved_path}`")
+                        log_activity(f"Completed paywalled analysis, saved to {saved_paths}", st.session_state.base_dir)
+                        st.success(f"✅ Analysis complete! Saved to: `{saved_paths}`")
                         
                 except Exception as e:
                     st.error(f"❌ Error during paywalled analysis: {str(e)}")
@@ -455,21 +468,7 @@ def main():
                     st.session_state.processing_paywalled = False
                     st.rerun()
         
-        # Results section
-        # st.subheader("📊 Results")
-        # paywalled_dir = st.session_state.base_dir / "paywalled_content"
-        # if paywalled_dir.exists():
-        #     files = sorted(paywalled_dir.glob("*.txt"), key=os.path.getmtime, reverse=True)
-        #     if files:
-        #         latest_file = files[0]
-        #         col1, col2 = st.columns([3, 1])
-        #         with col1:
-        #             st.write(f"**Latest Analysis:** {latest_file.name}")
-        #         with col2:
-        #             if st.button("📄 View Full Report", key="paywalled_view"):
-        #                 with open(latest_file, 'r', encoding='utf-8') as f:
-        #                     content = f.read()
-        #                 st.text_area("Raw Output", content, height=400, key="paywalled_output")
+        ## Updated versions
         # Results section
         st.subheader("📈 Expert Insights Preview")
         paywalled_dir = st.session_state.base_dir / "paywalled_content"
@@ -493,7 +492,7 @@ def main():
         with col1:
             st.subheader("Expert Selection")
             default_experts = [
-                "Bob Moriarty (321 gold)",
+                "Bob Moriarty",
                 "Kitco News", 
                 "Mike Maloney",
                 "Peter Schiff",
@@ -560,17 +559,35 @@ def main():
                         
                         # Run the agent
                         result = asyncio.run(st.session_state.agents.run_general_expert_agent(
-                            expert_names=selected_experts
+                            # expert_names=selected_experts
+                            expert_names=selected_experts,
+                            time_frame=time_window,
+                            focus_areas=focus_areas
                         ))
                         
-                        # Save result
-                        filename = "general_experts_analysis.txt"
-                        saved_path = save_document(
+                        # # Save result
+                        # filename = "general_experts_analysis.txt"
+                        # saved_path = save_document(
+                        #     result, 
+                        #     filename, 
+                        #     "general_experts", 
+                        #     st.session_state.base_dir
+                        # )
+                        ## Updated save results
+                        # Save result in txt, md, pdf
+                        # filename = "general_experts_analysis.txt"
+                        filename = f"general_experts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                        saved_paths = save_document_all_formats(
                             result, 
                             filename, 
                             "general_experts", 
                             st.session_state.base_dir
                         )
+
+                        log_activity(f"Completed general expert analysis, saved to {saved_paths['txt']}, {saved_paths['md']}, {saved_paths['pdf']}", st.session_state.base_dir)
+                        st.success(f"✅ Analysis complete! Saved to:\n- `{saved_paths['txt'].name}`\n- `{saved_paths['md'].name}`\n- `{saved_paths['pdf'].name}`")
+
+
                         
                         log_activity(f"Completed general expert analysis, saved to {saved_path}", st.session_state.base_dir)
                         st.success(f"✅ Analysis complete! Saved to: `{saved_path}`")
@@ -669,15 +686,21 @@ def main():
                         
                         # Save result
                         filename = f"podcast_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-                        saved_path = save_document(
+                        # saved_path = save_document(
+                        #     result, 
+                        #     filename, 
+                        #     "podcast_analysis", 
+                        #     st.session_state.base_dir
+                        # )
+                        saved_paths = save_document_all_formats(
                             result, 
                             filename, 
                             "podcast_analysis", 
                             st.session_state.base_dir
                         )
                         
-                        log_activity(f"Completed podcast analysis, saved to {saved_path}", st.session_state.base_dir)
-                        st.success(f"✅ Podcast analysis complete! Saved to: `{saved_path}`")
+                        log_activity(f"Completed podcast analysis, saved to {saved_paths}", st.session_state.base_dir)
+                        st.success(f"✅ Podcast analysis complete! Saved to: `{saved_paths}`")
                         
                 except Exception as e:
                     st.error(f"❌ Error during podcast analysis: {str(e)}")
@@ -795,7 +818,9 @@ def main():
                     status_text.text("Analyzing general experts...")
                     log_activity("Suite - running general expert analysis", st.session_state.base_dir)
                     result2 = asyncio.run(st.session_state.agents.run_general_expert_agent(
-                        expert_names=["Bob Moriarty (321 gold)", "Kitco News", "Mike Maloney", "Peter Schiff", "Silver Institute"]
+                        expert_names=["Bob Moriarty", "Kitco News", "Mike Maloney", "Peter Schiff", "Silver Institute"],
+                        time_frame="Last 7 days",
+                        focus_areas= ["Precious Metals", "Crypto", "Macro Economics", "Geopolitics", "Energy"],
                     ))
                     save_document(result2, "general_suite_analysis.txt", "combined_analysis", st.session_state.base_dir)
                     progress_bar.progress(66)

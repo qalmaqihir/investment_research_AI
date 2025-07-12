@@ -205,9 +205,3 @@ class GeneralExpertAgent:
         result = await agent.ainvoke(initial_state)
         logger.info(f"\t X<----> GeneralExpertAgent run complete. <---->X\n")
         return result['final_output']
-
-# # # Example usage:
-# # if __name__ == "__main__":
-# #     agent = GeneralExpertAgent(openai_api_key="YOUR_OPENAI_KEY")
-# #     output = asyncio.run(agent.run(["Elon Musk", "Sam Altman"]))
-# #     print(output)

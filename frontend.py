@@ -12,6 +12,11 @@ from agents.paywalled_agent import PaywalledContentAgent
 from agents.general_expert_agent import GeneralExpertAgent
 from agents.podcast_agent import PodcastAgent
 from utils.save_files_utils import save_document_all_formats
+
+from pathlib import Path
+import os
+
+
 # Configure logging for this module specifically
 def setup_logging(base_dir: Path):
     """Setup isolated logging for the main app"""
@@ -98,8 +103,8 @@ class InvestmentResearchAgents:
         try:
             self.paywalled_agent = PaywalledContentAgent(
                 self.primary_api_key,  
-                username="YOUR_USERNAME",
-                password="YOUR_PASSWORD"
+                # username="",
+                # password=""
             )
             self.general_expert_agent = GeneralExpertAgent(self.primary_api_key)
             self.podcast_agent = PodcastAgent(self.primary_api_key)
@@ -113,16 +118,118 @@ class InvestmentResearchAgents:
         macro (high debt leading to money printing and inflation), and AI+tech (deflation/depression).
         """
 
-    async def run_paywalled_agent(self, content_sources: List[str], expert_tier: str = "tier2"):
-        """Run paywalled content agent with error handling"""
+    ## Version 1 and 2
+    # async def run_paywalled_agent(self, content_sources: List[str], expert_tier: str = "tier2"):
+    #     """Run paywalled content agent with error handling"""
+    #     try:
+    #         self.logger.info(f"[Main]>> Starting paywalled agent with {len(content_sources)} sources, tier: {expert_tier}. <<[Main]\n")
+    #         result = await self.paywalled_agent.run(content_sources, expert_tier)
+    #         self.logger.info(f"[Main]>> Paywalled agent completed successfully. <<[Main]\n")
+    #         return result
+    #     except Exception as e:
+    #         self.logger.error(f"X** [Main]>> Paywalled agent failed: {str(e)}. <<[Main]\n")
+    #         raise
+
+    # ## Exposing the only download pdfs method
+    # async def download_pdfs_from_source(self, content_url: str, max_pdfs: int = 3):
+    #     return self.paywalled_agent.download_pdfs_from_source(content_url, max_pdfs)
+
+    ## Version 3
+    # Fixed frontend methods for the main agent class
+
+    def run_paywalled_agent(self, content_sources: List[str], expert_tier: str = "tier2"):
+        """Run paywalled content agent with error handling - SYNCHRONOUS"""
         try:
             self.logger.info(f"[Main]>> Starting paywalled agent with {len(content_sources)} sources, tier: {expert_tier}. <<[Main]\n")
-            result = await self.paywalled_agent.run(content_sources, expert_tier)
+            
+            # Validate content sources
+            if not content_sources:
+                raise ValueError("No content sources provided")
+            
+            # Log each source for debugging
+            for i, source in enumerate(content_sources):
+                self.logger.info(f"[Main]>> Source {i+1}: {source}")
+                if not os.path.exists(source):
+                    self.logger.warning(f"[Main]>> Source file does not exist: {source}")
+            
+            # Create event loop if needed
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Run the agent
+            result = loop.run_until_complete(self.paywalled_agent.run(content_sources, expert_tier))
+            
             self.logger.info(f"[Main]>> Paywalled agent completed successfully. <<[Main]\n")
             return result
+            
         except Exception as e:
             self.logger.error(f"X** [Main]>> Paywalled agent failed: {str(e)}. <<[Main]\n")
             raise
+
+    def download_pdfs_from_source(self, content_url: str, max_pdfs: int = 3):
+        """Download PDFs from source - SYNCHRONOUS"""
+        try:
+            self.logger.info(f"[Main]>> Starting PDF download from: {content_url}")
+            
+            # Call the synchronous method directly
+            downloaded_paths = self.paywalled_agent.download_pdfs_from_source(content_url, max_pdfs)
+            
+            self.logger.info(f"[Main]>> Download completed. Files: {downloaded_paths}")
+            return downloaded_paths
+            
+        except Exception as e:
+            self.logger.error(f"X** [Main]>> PDF download failed: {str(e)}")
+            raise
+
+    # Alternative async versions if you prefer to keep async structure
+    async def run_paywalled_agent_async(self, content_sources: List[str], expert_tier: str = "tier2"):
+        """Run paywalled content agent with error handling - ASYNC"""
+        try:
+            self.logger.info(f"[Main]>> Starting paywalled agent with {len(content_sources)} sources, tier: {expert_tier}. <<[Main]\n")
+            
+            # Validate content sources
+            if not content_sources:
+                raise ValueError("No content sources provided")
+            
+            # Log each source for debugging
+            for i, source in enumerate(content_sources):
+                self.logger.info(f"[Main]>> Source {i+1}: {source}")
+                if not os.path.exists(source):
+                    self.logger.warning(f"[Main]>> Source file does not exist: {source}")
+            
+            result = await self.paywalled_agent.run(content_sources, expert_tier)
+            
+            self.logger.info(f"[Main]>> Paywalled agent completed successfully. <<[Main]\n")
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"X** [Main]>> Paywalled agent failed: {str(e)}. <<[Main]\n")
+            raise
+
+    async def download_pdfs_from_source_async(self, content_url: str, max_pdfs: int = 3):
+        """Download PDFs from source - ASYNC wrapper"""
+        try:
+            self.logger.info(f"[Main]>> Starting PDF download from: {content_url}")
+            
+            # Run synchronous method in thread pool
+            loop = asyncio.get_event_loop()
+            downloaded_paths = await loop.run_in_executor(
+                None, 
+                self.paywalled_agent.download_pdfs_from_source, 
+                content_url, 
+                max_pdfs
+            )
+            
+            self.logger.info(f"[Main]>> Download completed. Files: {downloaded_paths}")
+            return downloaded_paths
+            
+        except Exception as e:
+            self.logger.error(f"X** [Main]>> PDF download failed: {str(e)}")
+            raise
+
 
     # async def run_general_expert_agent(self, expert_names: List[str]):
     async def run_general_expert_agent(self, expert_names: List[str], time_frame: str, focus_areas: List[str]):
@@ -373,116 +480,485 @@ def main():
         "📁 File Manager"
     ])
 
-    # Tab 1: Paywalled Content
-    with tab1:
-        st.header("📰 Paywalled Content Analysis")
+    ## Version 1
+    # # Tab 1: Paywalled Content
+    # with tab1:
+    #     st.header("📰 Paywalled Content Analysis")
         
-        col1, col2 = st.columns([2, 1])
+    #     col1, col2 = st.columns([2, 1])
         
-        with col1:
-            st.subheader("Content Sources")
-            expert_tier = st.selectbox(
-                "Select Expert Tier",
-                ["tier1", "tier2"],
-                help="Tier 1: 10 bullets (Jim Rickards, Luke Gromen, etc.) | Tier 2: 5 bullets",
-                key="paywalled_tier"
-            )
+    #     with col1:
+    #         st.subheader("Content Sources")
+    #         expert_tier = st.selectbox(
+    #             "Select Expert Tier",
+    #             ["tier1", "tier2"],
+    #             help="Tier 1: 10 bullets (Jim Rickards, Luke Gromen, etc.) | Tier 2: 5 bullets",
+    #             key="paywalled_tier"
+    #         )
             
-            tier1_experts = ["Jim Rickards", "Luke Gromen", "Tom Luongo", "Doomberg"]
-            tier2_experts = ["Expert A", "Expert B", "Expert C", "Expert D"]
-            default_sources = tier1_experts if expert_tier == "tier1" else tier2_experts
+    #         tier1_experts = ["Jim Rickards", "Luke Gromen", "Tom Luongo", "Doomberg"]
+    #         tier2_experts = ["Expert A", "Expert B", "Expert C", "Expert D"]
+    #         default_sources = tier1_experts if expert_tier == "tier1" else tier2_experts
             
-            selected_sources = st.multiselect(
-                "Select Content Sources",
-                options=default_sources + ["Custom..."],
-                default=default_sources[:2],
-                key="paywalled_sources"
-            )
+    #         selected_sources = st.multiselect(
+    #             "Select Content Sources",
+    #             options=default_sources + ["Custom..."],
+    #             default=default_sources[:2],
+    #             key="paywalled_sources"
+    #         )
             
-            if "Custom..." in selected_sources:
-                custom_sources = st.text_area(
-                    "Enter custom sources (one per line)",
-                    height=100,
-                    key="paywalled_custom"
+    #         if "Custom..." in selected_sources:
+    #             custom_sources = st.text_area(
+    #                 "Enter custom sources (one per line)",
+    #                 height=100,
+    #                 key="paywalled_custom"
+    #             )
+    #             if custom_sources:
+    #                 custom_list = [s.strip() for s in custom_sources.split('\n') if s.strip()]
+    #                 selected_sources = [s for s in selected_sources if s != "Custom..."] + custom_list
+        
+    #     with col2:
+    #         st.subheader("Quick Actions")
+            
+    #         # Status indicator
+    #         if st.session_state.processing_paywalled:
+    #             st.error("🔄 Processing...")
+    #         else:
+    #             st.success("✅ Ready")
+            
+    #         # Run button
+    #         run_paywalled = st.button(
+    #             "🚀 Run Paywalled Analysis",
+    #             disabled=st.session_state.processing_paywalled or not selected_sources or any([
+    #                 st.session_state.processing_general,
+    #                 st.session_state.processing_podcast,
+    #                 st.session_state.processing_suite
+    #             ]),
+    #             use_container_width=True,
+    #             key="btn_paywalled"
+    #         )
+            
+    #         # Process paywalled analysis
+    #         if run_paywalled and selected_sources:
+    #             st.session_state.processing_paywalled = True
+    #             try:
+    #                 with st.spinner("Processing paywalled content..."):
+    #                     log_activity(f"Started paywalled analysis for {len(selected_sources)} sources", st.session_state.base_dir)
+                        
+    #                     # Run the agent
+    #                     result = asyncio.run(st.session_state.agents.run_paywalled_agent(
+    #                         content_sources=selected_sources,
+    #                         expert_tier=expert_tier
+    #                     ))
+                        
+    #                     # Save result
+    #                     filename = f"paywalled_{expert_tier}_analysis.txt"
+    #                     # saved_path = save_document(
+    #                     #     result, 
+    #                     #     filename, 
+    #                     #     "paywalled_content", 
+    #                     #     st.session_state.base_dir
+    #                     # )
+                        
+    #                     saved_paths = save_document_all_formats(
+    #                         result, 
+    #                         filename, 
+    #                         "paywalled_content", 
+    #                         st.session_state.base_dir
+    #                     )
+    #                     log_activity(f"Completed paywalled analysis, saved to {saved_paths}", st.session_state.base_dir)
+    #                     st.success(f"✅ Analysis complete! Saved to: `{saved_paths}`")
+                        
+    #             except Exception as e:
+    #                 st.error(f"❌ Error during paywalled analysis: {str(e)}")
+    #                 log_activity(f"Error in paywalled analysis: {str(e)}", st.session_state.base_dir)
+    #             finally:
+    #                 st.session_state.processing_paywalled = False
+    #                 st.rerun()
+        
+    #     ## Updated versions
+    #     # Results section
+    #     st.subheader("📈 Expert Insights Preview")
+    #     paywalled_dir = st.session_state.base_dir / "paywalled_content"
+    #     if paywalled_dir.exists():
+    #         files = sorted(paywalled_dir.glob("*.txt"), key=os.path.getmtime, reverse=True)
+    #         if files:
+    #             latest_file = files[0]
+    #             with open(latest_file, 'r', encoding='utf-8') as f:
+    #                 content = f.read()
+    #             preview = content[:500] + "..." if len(content) > 500 else content
+    #             st.text_area("Preview", preview, height=200, key="paywalled_preview")
+    #             if st.button("📄 View Full Analysis", key="paywalled_view"):
+    #                 st.text_area("Full Analysis", content, height=400, key="paywalled_full")
+
+    ### Veriosn 2
+    #  # Tab 1: Paywalled Content
+    # with st.container():
+    #     st.header("📰 Paywalled Content Analysis")
+
+    #     col1, col2 = st.columns([2, 1])
+
+    #     with col1:
+    #         st.subheader("Step 1: Choose Expert or Custom URL")
+    #         expert_tier = st.selectbox(
+    #             "Select Expert Tier",
+    #             ["tier1", "tier2"],
+    #             help="Tier 1: 10 bullets (Jim Rickards, Luke Gromen, etc.) | Tier 2: 5 bullets",
+    #             key="paywalled_tier"
+    #         )
+
+    #         tier1_experts = {
+    #             "Chris Macintosh": "https://capexinsider.com/login/insider-weekly-archive/",
+    #             "Luke Gromen": "https://example.com/luke_gromen",
+    #             "Tom Luongo": "https://example.com/tom_luongo",
+    #             "Doomberg": "https://example.com/doomberg"
+    #         }
+
+    #         tier2_experts = {
+    #             "Expert A": "https://example.com/expert_a",
+    #             "Expert B": "https://example.com/expert_b",
+    #             "Expert C": "https://example.com/expert_c",
+    #             "Expert D": "https://example.com/expert_d"
+    #         }
+
+    #         expert_dict = tier1_experts if expert_tier == "tier1" else tier2_experts
+    #         selected_expert = st.selectbox(
+    #             "Select Expert or Source",
+    #             list(expert_dict.keys()) + ["Custom..."],
+    #             key="paywalled_selected_expert"
+    #         )
+
+    #         if selected_expert == "Custom...":
+    #             custom_url = st.text_input("Enter custom content URL:", key="paywalled_custom_url")
+    #         else:
+    #             custom_url = expert_dict[selected_expert]
+
+    #         st.write(f"🔗 Content URL to be scraped: `{custom_url}`")
+
+    #     with col2:
+    #         st.subheader("Step 2: Scrape & Download PDFs")
+    #         scrape_button = st.button("📥 Scrape & Download Top PDFs", key="btn_scrape_pdf", disabled=st.session_state.processing_paywalled)
+
+    #         if scrape_button and custom_url:
+    #             st.session_state.processing_paywalled = True
+    #             try:
+    #                 with st.spinner("Downloading PDFs..."):
+    #                     downloaded_paths = asyncio.run(st.session_state.agents.download_pdfs_from_source(custom_url))
+    #                     if not downloaded_paths:
+    #                         st.warning("⚠️ No PDFs were downloaded. Check the URL or try again.")
+    #                     else:
+    #                         st.success(f"✅ Downloaded {len(downloaded_paths)} PDFs.")
+    #                         st.session_state["available_paywalled_pdfs"] = downloaded_paths  # ✅ Save for next run
+    #                         log_activity(f"Downloaded PDFs from {custom_url}: {downloaded_paths}", st.session_state.base_dir)
+    #             except Exception as e:
+    #                 st.error(f"❌ Failed to download PDFs: {str(e)}")
+    #                 log_activity(f"Error downloading PDFs from {custom_url}: {str(e)}", st.session_state.base_dir)
+    #             finally:
+    #                 st.session_state.processing_paywalled = False
+    #                 st.rerun()
+
+    #     st.divider()
+
+    #     st.subheader("Step 3: Select a PDF & Run Summary")
+    #     # Step 3: Select a PDF & Run Summary
+    #     pdf_dir = Path("./investment_research_outputs/paywalled_content/downloads").resolve()
+    #     available_pdfs = sorted(pdf_dir.glob("*.pdf"), key=os.path.getmtime, reverse=True)
+
+    #     if available_pdfs:
+    #         pdf_options = {p.name: str(p) for p in available_pdfs}
+    #         selected_pdf_name = st.selectbox(
+    #             "📄 Choose a downloaded PDF to summarize",
+    #             list(pdf_options.keys()),
+    #             key="paywalled_selected_pdf"
+    #         )
+    #         selected_pdf = pdf_options[selected_pdf_name]
+
+    #         run_summary = st.button("🚀 Run Paywalled Summary Agent", key="btn_run_summary", disabled=st.session_state.processing_paywalled)
+
+    #         if run_summary and selected_pdf:
+    #             st.session_state.processing_paywalled = True
+    #             try:
+    #                 with st.spinner(f"Summarizing {selected_pdf_name}..."):
+    #                     result = asyncio.run(st.session_state.agents.run_paywalled_agent(
+    #                         content_sources=[selected_pdf],
+    #                         expert_tier=expert_tier
+    #                     ))
+    #                     filename = f"paywalled_summary_{Path(selected_pdf).stem}.txt"
+    #                     saved_paths = save_document_all_formats(
+    #                         result,
+    #                         filename,
+    #                         "paywalled_content",
+    #                         st.session_state.base_dir
+    #                     )
+    #                     st.success(f"✅ Summary complete for {selected_pdf_name}.")
+    #                     log_activity(f"Summary created for {selected_pdf}, saved to {saved_paths}", st.session_state.base_dir)
+    #             except ValueError as e:
+    #                 st.error(f"❌ Summary failed: {str(e)}")
+    #                 log_activity(f"Error during summary for {selected_pdf}: {str(e)}", st.session_state.base_dir)
+    #             except Exception as e:
+    #                 st.error(f"❌ Unexpected error during summary: {str(e)}")
+    #                 log_activity(f"Unexpected error during summary for {selected_pdf}: {str(e)}", st.session_state.base_dir)
+    #             finally:
+    #                 st.session_state.processing_paywalled = False
+    #                 st.rerun()
+    #     else:
+    #         st.info("📭 No PDFs available yet. Please scrape them first.")
+
+
+    #     st.divider()
+    #     st.subheader("📈 Expert Insights Preview")
+
+    #     output_dir = st.session_state.base_dir / "paywalled_content"
+    #     text_files = sorted(output_dir.glob("*.txt"), key=os.path.getmtime, reverse=True)
+
+    #     if text_files:
+    #         latest_txt = text_files[0]
+    #         with open(latest_txt, 'r', encoding='utf-8') as f:
+    #             content = f.read()
+    #         # Truncate at sentence boundary for preview
+    #         preview_length = 500
+    #         if len(content) > preview_length:
+    #             last_period = content[:preview_length].rfind('.')
+    #             preview = content[:last_period + 1] if last_period != -1 else content[:preview_length] + "..."
+    #         else:
+    #             preview = content
+    #         st.markdown(f"### 🧠 Preview for {selected_expert or 'Custom Source'}:")
+    #         st.text_area("Preview", preview, height=200)
+    #         if st.button("📄 View Full Analysis"):
+    #             st.text_area("Full Summary", content, height=400)
+
+        ## Version 3
+        # Fixed Streamlit frontend code
+        # Tab 1: Paywalled Content
+        with st.container():
+            st.header("📰 Paywalled Content Analysis")
+
+            col1, col2 = st.columns([2, 1])
+
+            with col1:
+                st.subheader("Step 1: Choose Expert or Custom URL")
+                expert_tier = st.selectbox(
+                    "Select Expert Tier",
+                    ["tier1", "tier2"],
+                    help="Tier 1: 10 bullets (Jim Rickards, Luke Gromen, etc.) | Tier 2: 5 bullets",
+                    key="paywalled_tier"
                 )
-                if custom_sources:
-                    custom_list = [s.strip() for s in custom_sources.split('\n') if s.strip()]
-                    selected_sources = [s for s in selected_sources if s != "Custom..."] + custom_list
-        
-        with col2:
-            st.subheader("Quick Actions")
+
+                tier1_experts = {
+                    "Chris Macintosh": "https://capexinsider.com/login/insider-weekly-archive/",
+                    "Luke Gromen": "https://example.com/luke_gromen",
+                    "Tom Luongo": "https://example.com/tom_luongo",
+                    "Doomberg": "https://example.com/doomberg"
+                }
+
+                tier2_experts = {
+                    "Expert A": "https://example.com/expert_a",
+                    "Expert B": "https://example.com/expert_b",
+                    "Expert C": "https://example.com/expert_c",
+                    "Expert D": "https://example.com/expert_d"
+                }
+
+                expert_dict = tier1_experts if expert_tier == "tier1" else tier2_experts
+                selected_expert = st.selectbox(
+                    "Select Expert or Source",
+                    list(expert_dict.keys()) + ["Custom..."],
+                    key="paywalled_selected_expert"
+                )
+
+                if selected_expert == "Custom...":
+                    custom_url = st.text_input("Enter custom content URL:", key="paywalled_custom_url")
+                else:
+                    custom_url = expert_dict[selected_expert]
+
+                st.write(f"🔗 Content URL to be scraped: `{custom_url}`")
+
+            with col2:
+                st.subheader("Step 2: Scrape & Download PDFs")
+                scrape_button = st.button("📥 Scrape & Download Top PDFs", key="btn_scrape_pdf", disabled=st.session_state.processing_paywalled)
+
+                if scrape_button and custom_url:
+                    st.session_state.processing_paywalled = True
+                    try:
+                        with st.spinner("Downloading PDFs..."):
+                            # Use synchronous method instead of asyncio.run
+                            downloaded_paths = st.session_state.agents.download_pdfs_from_source(custom_url)
+                            if not downloaded_paths:
+                                st.warning("⚠️ No PDFs were downloaded. Check the URL or try again.")
+                            else:
+                                st.success(f"✅ Downloaded {len(downloaded_paths)} PDFs.")
+                                st.session_state["available_paywalled_pdfs"] = downloaded_paths
+                                log_activity(f"Downloaded PDFs from {custom_url}: {downloaded_paths}", st.session_state.base_dir)
+                                
+                                # Show downloaded files
+                                st.info("📄 Downloaded files:")
+                                for path in downloaded_paths:
+                                    st.write(f"• {os.path.basename(path)}")
+                                    
+                    except Exception as e:
+                        st.error(f"❌ Failed to download PDFs: {str(e)}")
+                        log_activity(f"Error downloading PDFs from {custom_url}: {str(e)}", st.session_state.base_dir)
+                        st.exception(e)  # Show full traceback for debugging
+                    finally:
+                        st.session_state.processing_paywalled = False
+                        st.rerun()
+
+            st.divider()
+
+            st.subheader("Step 3: Select a PDF & Run Summary")
+            # Step 3: Select a PDF & Run Summary
+            pdf_dir = Path("./investment_research_outputs/paywalled_content/downloads").resolve()
             
-            # Status indicator
-            if st.session_state.processing_paywalled:
-                st.error("🔄 Processing...")
+            # Ensure directory exists
+            pdf_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Get available PDFs
+            available_pdfs = sorted(pdf_dir.glob("*.pdf"), key=os.path.getmtime, reverse=True)
+
+            if available_pdfs:
+                pdf_options = {p.name: str(p) for p in available_pdfs}
+                selected_pdf_name = st.selectbox(
+                    "📄 Choose a downloaded PDF to summarize",
+                    list(pdf_options.keys()),
+                    key="paywalled_selected_pdf"
+                )
+                selected_pdf = pdf_options[selected_pdf_name]
+                
+                # Show PDF details
+                pdf_path = Path(selected_pdf)
+                if pdf_path.exists():
+                    file_size = pdf_path.stat().st_size
+                    mod_time = datetime.fromtimestamp(pdf_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                    st.info(f"📊 Selected PDF: {pdf_path.name} | Size: {file_size:,} bytes | Modified: {mod_time}")
+                else:
+                    st.error(f"❌ Selected PDF does not exist: {selected_pdf}")
+
+                run_summary = st.button("🚀 Run Paywalled Summary Agent", key="btn_run_summary", disabled=st.session_state.processing_paywalled)
+
+                if run_summary and selected_pdf:
+                    st.session_state.processing_paywalled = True
+                    try:
+                        with st.spinner(f"Summarizing {selected_pdf_name}..."):
+                            # Add debugging information
+                            st.info(f"🔍 Processing PDF: {selected_pdf}")
+                            st.info(f"📊 Expert Tier: {expert_tier}")
+                            
+                            # Validate PDF before processing
+                            if not os.path.exists(selected_pdf):
+                                raise FileNotFoundError(f"PDF file not found: {selected_pdf}")
+                            
+                            # Use synchronous method instead of asyncio.run
+                            result = st.session_state.agents.run_paywalled_agent(
+                                content_sources=[selected_pdf],
+                                expert_tier=expert_tier
+                            )
+                            
+                            if not result or len(result.strip()) < 10:
+                                st.warning("⚠️ Summary appears to be empty or too short. Check the PDF content.")
+                            else:
+                                filename = f"paywalled_summary_{Path(selected_pdf).stem}.txt"
+                                saved_paths = save_document_all_formats(
+                                    result,
+                                    filename,
+                                    "paywalled_content",
+                                    st.session_state.base_dir
+                                )
+                                st.success(f"✅ Summary complete for {selected_pdf_name}.")
+                                log_activity(f"Summary created for {selected_pdf}, saved to {saved_paths}", st.session_state.base_dir)
+                                
+                                # Show preview of result
+                                st.subheader("📝 Summary Preview")
+                                st.text_area("Generated Summary", result[:500] + "..." if len(result) > 500 else result, height=200)
+                                
+                    except ValueError as e:
+                        st.error(f"❌ Summary failed: {str(e)}")
+                        log_activity(f"Error during summary for {selected_pdf}: {str(e)}", st.session_state.base_dir)
+                    except Exception as e:
+                        st.error(f"❌ Unexpected error during summary: {str(e)}")
+                        log_activity(f"Unexpected error during summary for {selected_pdf}: {str(e)}", st.session_state.base_dir)
+                        st.exception(e)  # Show full traceback for debugging
+                    finally:
+                        st.session_state.processing_paywalled = False
+                        st.rerun()
             else:
-                st.success("✅ Ready")
+                st.info("📭 No PDFs available yet. Please scrape them first.")
+                # Show what's in the directory for debugging
+                st.write(f"📁 Looking in directory: {pdf_dir}")
+                if pdf_dir.exists():
+                    all_files = list(pdf_dir.glob("*"))
+                    if all_files:
+                        st.write("📄 Files found in directory:")
+                        for file in all_files:
+                            st.write(f"• {file.name} ({'PDF' if file.suffix.lower() == '.pdf' else 'Other'})")
+                    else:
+                        st.write("📭 Directory is empty")
+                else:
+                    st.write("❌ Directory does not exist")
+
+            st.divider()
+            st.subheader("📈 Expert Insights Preview")
+
+            output_dir = st.session_state.base_dir / "paywalled_content"
+            output_dir.mkdir(parents=True, exist_ok=True)
             
-            # Run button
-            run_paywalled = st.button(
-                "🚀 Run Paywalled Analysis",
-                disabled=st.session_state.processing_paywalled or not selected_sources or any([
-                    st.session_state.processing_general,
-                    st.session_state.processing_podcast,
-                    st.session_state.processing_suite
-                ]),
-                use_container_width=True,
-                key="btn_paywalled"
-            )
-            
-            # Process paywalled analysis
-            if run_paywalled and selected_sources:
-                st.session_state.processing_paywalled = True
+            text_files = sorted(output_dir.glob("*.txt"), key=os.path.getmtime, reverse=True)
+
+            if text_files:
+                latest_txt = text_files[0]
                 try:
-                    with st.spinner("Processing paywalled content..."):
-                        log_activity(f"Started paywalled analysis for {len(selected_sources)} sources", st.session_state.base_dir)
-                        
-                        # Run the agent
-                        result = asyncio.run(st.session_state.agents.run_paywalled_agent(
-                            content_sources=selected_sources,
-                            expert_tier=expert_tier
-                        ))
-                        
-                        # Save result
-                        filename = f"paywalled_{expert_tier}_analysis.txt"
-                        # saved_path = save_document(
-                        #     result, 
-                        #     filename, 
-                        #     "paywalled_content", 
-                        #     st.session_state.base_dir
-                        # )
-                        
-                        saved_paths = save_document_all_formats(
-                            result, 
-                            filename, 
-                            "paywalled_content", 
-                            st.session_state.base_dir
+                    with open(latest_txt, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    # Truncate at sentence boundary for preview
+                    preview_length = 500
+                    if len(content) > preview_length:
+                        last_period = content[:preview_length].rfind('.')
+                        preview = content[:last_period + 1] if last_period != -1 else content[:preview_length] + "..."
+                    else:
+                        preview = content
+                    
+                    st.markdown(f"### 🧠 Preview for {selected_expert or 'Custom Source'}:")
+                    st.text_area("Preview", preview, height=200, key="preview_area")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("📄 View Full Analysis"):
+                            st.text_area("Full Summary", content, height=400, key="full_summary_area")
+                    
+                    with col2:
+                        # Download button for the summary
+                        st.download_button(
+                            label="💾 Download Summary",
+                            data=content,
+                            file_name=f"paywalled_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                            mime="text/plain"
                         )
-                        log_activity(f"Completed paywalled analysis, saved to {saved_paths}", st.session_state.base_dir)
-                        st.success(f"✅ Analysis complete! Saved to: `{saved_paths}`")
                         
                 except Exception as e:
-                    st.error(f"❌ Error during paywalled analysis: {str(e)}")
-                    log_activity(f"Error in paywalled analysis: {str(e)}", st.session_state.base_dir)
-                finally:
-                    st.session_state.processing_paywalled = False
-                    st.rerun()
-        
-        ## Updated versions
-        # Results section
-        st.subheader("📈 Expert Insights Preview")
-        paywalled_dir = st.session_state.base_dir / "paywalled_content"
-        if paywalled_dir.exists():
-            files = sorted(paywalled_dir.glob("*.txt"), key=os.path.getmtime, reverse=True)
-            if files:
-                latest_file = files[0]
-                with open(latest_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                preview = content[:500] + "..." if len(content) > 500 else content
-                st.text_area("Preview", preview, height=200, key="paywalled_preview")
-                if st.button("📄 View Full Analysis", key="paywalled_view"):
-                    st.text_area("Full Analysis", content, height=400, key="paywalled_full")
-
+                    st.error(f"❌ Error reading summary file: {str(e)}")
+            else:
+                st.info("📭 No summaries available yet. Process a PDF first to see insights here.")
+                
+            # Debug information (can be removed in production)
+            if st.checkbox("🔧 Show Debug Information", key="debug_paywalled"):
+                st.subheader("Debug Information")
+                st.write(f"📁 PDF Directory: {pdf_dir}")
+                st.write(f"📁 Output Directory: {output_dir}")
+                st.write(f"📊 Processing State: {st.session_state.processing_paywalled}")
+                
+                if 'available_paywalled_pdfs' in st.session_state:
+                    st.write(f"📄 Available PDFs in session: {st.session_state.available_paywalled_pdfs}")
+                    
+                # Show recent log entries if available
+                try:
+                    log_file = st.session_state.base_dir / "activity.log"
+                    if log_file.exists():
+                        with open(log_file, 'r') as f:
+                            lines = f.readlines()
+                            recent_lines = lines[-10:]  # Last 10 lines
+                            st.text_area("Recent Log Entries", "".join(recent_lines), height=150)
+                except Exception as e:
+                    st.write(f"Could not read log file: {e}")
+                    
     # Tab 2: General Experts
     with tab2:
         st.header("👥 General Expert Analysis")

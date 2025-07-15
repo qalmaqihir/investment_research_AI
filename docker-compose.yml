@@ -1,0 +1,11 @@
+version: '3.9'
+
+services:
+  streamlit_app:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./investment_research_outputs:/app/investment_research_outputs
+    environment:
+      - PYTHONUNBUFFERED=1

@@ -26,11 +26,6 @@ if not logger.hasHandlers():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-# class GeneralExpertState(TypedDict):
-#     expert_names: List[str]
-#     summaries: List[Dict[str, Any]]
-#     final_output: str
-
 class GeneralExpertState(TypedDict):
     expert_names: List[str]
     summaries: List[Dict[str, Any]]
@@ -49,17 +44,6 @@ class GeneralExpertAgent:
             summaries = []
             logger.info(f"Starting analysis for experts: {state['expert_names']} with time frame: {state['time_frame']} and focus_areas: {state['focus_areas']}")
 
-            # prompt_template = """
-            # Identify the person's core expertise and deliver exactly one section in BULLET POINTS:
-
-            # **Key views & insights (past 7 days)**
-            # ▪ 5 bullets only
-            # ▪ Each bullet: state the insight (short but informative and relevant for an investor)
-            # ▪ Include inline citations with source URLs in brackets for each bullet
-
-            # Expert: {expert_name}
-            # Time window: {time_frame}
-            # """
             prompt_template = """
                 Identify the person's core expertise and deliver exactly one section in BULLET POINTS.
 

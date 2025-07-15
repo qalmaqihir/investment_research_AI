@@ -1,79 +1,3 @@
-# import os
-# from pathlib import Path
-# from fpdf import FPDF
-# from typing import Dict
-# import logging
-
-# # Setup local logger
-# logger = logging.getLogger("file_saver")
-# logger.setLevel(logging.INFO)
-
-# # Ensure no duplicate handlers if imported multiple times
-# if not logger.hasHandlers():
-#     handler = logging.StreamHandler()
-#     formatter = logging.Formatter(
-#         "%(asctime)s [FileSaver] %(levelname)s: %(message)s",
-#         datefmt="%Y-%m-%d %H:%M:%S"
-#     )
-#     handler.setFormatter(formatter)
-#     logger.addHandler(handler)
-
-# def save_as_txt(content: str, filename: str, dir_path: Path) -> Path:
-#     path = dir_path / filename
-#     with open(path, 'w', encoding='utf-8') as f:
-#         f.write(content)
-#     logger.info(f"Saved TXT file at {path}")
-#     return path
-
-# def save_as_md(content: str, filename: str, dir_path: Path) -> Path:
-#     if filename.endswith('.txt'):
-#         filename = filename.replace('.txt', '.md')
-#     path = dir_path / filename
-#     with open(path, 'w', encoding='utf-8') as f:
-#         f.write(content)
-#     logger.info(f"Saved MD file at {path}")
-#     return path
-
-# def save_as_pdf(content: str, filename: str, dir_path: Path) -> Path:
-#     if filename.endswith('.txt'):
-#         filename = filename.replace('.txt', '.pdf')
-    
-#     path = dir_path / filename
-
-#     try:
-#         pdf = FPDF()
-#         pdf.add_page()
-#         pdf.set_auto_page_break(auto=True, margin=15)
-#         pdf.set_font("Arial", size=12)
-
-#         # Split content into lines and write
-#         for line in content.split('\n'):
-#             pdf.multi_cell(0, 10, line)
-
-#         pdf.output(str(path))
-#         logger.info(f"Saved PDF file at {path}")
-
-#     except Exception as e:
-#         logger.error(f"Failed to save PDF file at {path}: {str(e)}")
-
-#     return path
-
-# def save_document_all_formats(content: str, filename: str, subdir: str, base_dir: Path) -> Dict[str, Path]:
-#     dir_path = base_dir / subdir
-#     os.makedirs(dir_path, exist_ok=True)
-#     logger.info(f"Saving documents in directory: {dir_path}")
-
-#     paths = {}
-#     paths['txt'] = save_as_txt(content, filename, dir_path)
-#     paths['md'] = save_as_md(content, filename, dir_path)
-#     paths['pdf'] = save_as_pdf(content, filename, dir_path)
-    
-#     logger.info(f"All files saved: {paths}")
-#     return paths
-
-
-### Fixed the pdf creating
-
 import os
 import subprocess
 from pathlib import Path
@@ -92,6 +16,43 @@ if not logger.hasHandlers():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+
+import re
+
+def format_for_markdown(content: str) -> str:
+    """
+    Format content for better markdown rendering by:
+    - Converting custom bullets (• 1., • 2., etc.) to Markdown numbered list format
+    - Adding proper spacing
+    """
+    lines = content.split('\n')
+    formatted_lines = []
+    for line in lines:
+        # Convert lines starting with "• <number>." to markdown-style numbered list
+        match = re.match(r"•\s*(\d+)\.\s*(.*)", line)
+        if match:
+            number, text = match.groups()
+            formatted_lines.append(f"{number}. {text}")
+        else:
+            formatted_lines.append(line)
+    
+    # Join with double newlines to ensure bullet spacing
+    return "\n\n".join(formatted_lines)
+
+def save_as_md(content: str, filename: str, dir_path: Path) -> Path:
+    if filename.endswith('.txt'):
+        filename = filename.replace('.txt', '.md')
+    path = dir_path / filename
+
+    formatted_content = format_for_markdown(content)
+
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(formatted_content)
+
+    logger.info(f"Saved MD file at {path}")
+    return path
+
+
 def save_as_txt(content: str, filename: str, dir_path: Path) -> Path:
     path = dir_path / filename
     with open(path, 'w', encoding='utf-8') as f:
@@ -99,14 +60,14 @@ def save_as_txt(content: str, filename: str, dir_path: Path) -> Path:
     logger.info(f"Saved TXT file at {path}")
     return path
 
-def save_as_md(content: str, filename: str, dir_path: Path) -> Path:
-    if filename.endswith('.txt'):
-        filename = filename.replace('.txt', '.md')
-    path = dir_path / filename
-    with open(path, 'w', encoding='utf-8') as f:
-        f.write(content)
-    logger.info(f"Saved MD file at {path}")
-    return path
+# def save_as_md(content: str, filename: str, dir_path: Path) -> Path:
+#     if filename.endswith('.txt'):
+#         filename = filename.replace('.txt', '.md')
+#     path = dir_path / filename
+#     with open(path, 'w', encoding='utf-8') as f:
+#         f.write(content)
+#     logger.info(f"Saved MD file at {path}")
+#     return path
 
 def render_pdf_with_quarto(md_path: Path, pdf_path: Path):
     try:
@@ -129,22 +90,6 @@ def render_pdf_with_quarto(md_path: Path, pdf_path: Path):
 
     except subprocess.CalledProcessError as e:
         logger.error(f"Quarto rendering failed: {e}")
-
-# def render_pdf_with_quarto(md_path: Path, pdf_path: Path):
-#     try:
-#         # Quarto render command with PDF output and TOC
-#         cmd = [
-#             "quarto",
-#             "render",
-#             str(md_path),
-#             "--to", "pdf",
-#             "--output", str(pdf_path),
-#             "--toc"
-#         ]
-#         subprocess.run(cmd, check=True)
-#         logger.info(f"Rendered PDF using Quarto at {pdf_path}")
-#     except subprocess.CalledProcessError as e:
-#         logger.error(f"Quarto rendering failed: {e}")
 
 def save_document_all_formats(content: str, filename: str, subdir: str, base_dir: Path) -> Dict[str, Path]:
     dir_path = base_dir / subdir

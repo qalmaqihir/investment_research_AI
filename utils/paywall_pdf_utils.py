@@ -110,6 +110,7 @@ class PaywalledPDFScraper:
             # Additional options for anti-detection
             chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
             chrome_options.add_experimental_option('useAutomationExtension', False)
+            chrome_options.binary_location = "/usr/bin/google-chrome"  # Ensure correct path
             
             # Download preferences
             prefs = {
@@ -687,7 +688,7 @@ class PaywalledPDFScraper:
                 )
             
             # Use the original base_url logic
-            base_url = "https"
+            base_url = "https://capexinsider.com/login/insider-weekly-archive/"
             
             # Find PDF links
             pdf_links = self.find_pdf_links(base_url, max_pdfs)

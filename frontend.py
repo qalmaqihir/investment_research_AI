@@ -915,6 +915,9 @@ def main():
                 key="btn_suite"
             )
 
+            ## TODO: The quarto is throughing error, becuase the file name we are giving to save_all_format method is not as intended in the save_document.
+            ## In short, the without ext file name is not rendered by quarto...
+            ## Fixed
             # Process complete suite
             if run_suite:
                 st.session_state.processing_suite = True
@@ -933,7 +936,7 @@ def main():
                     # save_document(result1, "paywalled_suite_analysis.txt", "combined_analysis", st.session_state.base_dir)
                     saved_paths = save_document_all_formats(
                             result1, 
-                            "paywalled_suite_analysis", 
+                            "paywalled_suite_analysis.txt", 
                             "combined_analysis", 
                             st.session_state.base_dir
                         )
@@ -942,15 +945,21 @@ def main():
                     # Run general expert analysis (async)
                     status_text.text("Analyzing general experts...")
                     log_activity("Suite - running general expert analysis", st.session_state.base_dir)
+                    # result2 = asyncio.run(st.session_state.agents.run_general_expert_agent(
+                    #     expert_names=["Bob Moriarty", "Kitco News", "Mike Maloney", "Peter Schiff", "Silver Institute"],
+                    #     time_frame="Last 7 days",
+                    #     focus_areas=["Precious Metals", "Crypto", "Macro Economics", "Geopolitics", "Energy"]
+                    # ))
                     result2 = asyncio.run(st.session_state.agents.run_general_expert_agent(
-                        expert_names=["Bob Moriarty", "Kitco News", "Mike Maloney", "Peter Schiff", "Silver Institute"],
-                        time_frame="Last 7 days",
-                        focus_areas=["Precious Metals", "Crypto", "Macro Economics", "Geopolitics", "Energy"]
-                    ))
+                            # expert_names=selected_experts
+                            expert_names=selected_experts,
+                            time_frame=time_window,
+                            focus_areas=focus_areas
+                        ))
                     # save_document(result2, "general_suite_analysis.txt", "combined_analysis", st.session_state.base_dir)
                     saved_paths = save_document_all_formats(
                             result2, 
-                            "general_suite_analysis", 
+                            "general_suite_analysis.txt", 
                             "combined_analysis", 
                             st.session_state.base_dir
                         )
@@ -965,7 +974,7 @@ def main():
                     # save_document(result3, "podcast_suite_analysis.txt", "combined_analysis", st.session_state.base_dir)
                     saved_paths = save_document_all_formats(
                             result3, 
-                            "podcast_suite_analysis", 
+                            "podcast_suite_analysis.txt", 
                             "combined_analysis", 
                             st.session_state.base_dir
                         )
